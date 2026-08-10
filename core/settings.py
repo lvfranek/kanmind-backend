@@ -45,8 +45,10 @@ INSTALLED_APPS = [
     'auth_app',
     'kanban_app',
 
-    #CORS Headers
+    # CORS Headers
     'corsheaders',
+
+    'rest_framework.authtoken',  # Token Authentication
 ]
 
 REST_FRAMEWORK = {
@@ -139,7 +141,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-#CORS Headers
+# CORS Headers
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
