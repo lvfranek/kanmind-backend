@@ -8,7 +8,11 @@ from kanban_app.models import Board, Task, Comment
 from kanban_app.api.serializers import (
     BoardListSerializer,
     BoardDetailSerializer,
-    BoardCreateUpdateSerializer
+    BoardCreateUpdateSerializer,
+    TaskListSerializer,
+    TaskDetailSerializer,
+    TaskCreateUpdateSerializer,
+    CommentSerializer
 )
 
 
