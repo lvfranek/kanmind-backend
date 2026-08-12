@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from kanban_app.models import Board
 from kanban_app.models import Board, Task, Comment
 
 
@@ -109,14 +108,6 @@ class BoardCreateUpdateSerializer(serializers.Serializer):
             instance.members.set(members)
 
         return instance
-
-
-class UserSimpleSerializer(serializers.ModelSerializer):
-    """Serializer für User - zeigt nur wichtige Felder"""
-
-    class Meta:
-        model = User
-        fields = ["id", "email", "first_name"]
 
 
 class CommentSerializer(serializers.ModelSerializer):
