@@ -210,14 +210,19 @@ class TaskCreateUpdateSerializer(serializers.Serializer):
         """Erstellt neue Task"""
         user = self.context['request'].user
         board = Board.objects.get(id=validated_data['board'])
+        self._check_board_membership(board, user)
+        return self._create_task(board, user, validated_data)
 
-        """Prüfe ob User Member des Boards ist"""
+    def _check_board_membership(self, board, user):
+        """Prüft ob User Member des Boards ist"""
         if board.owner != user and user not in board.members.all():
             raise serializers.ValidationError(
                 "Du bist kein Member dieses Boards."
             )
 
-        task = Task.objects.create(
+    def _create_task(self, board, user, validated_data):
+        """Erstellt die Task mit den validierten Daten"""
+        return Task.objects.create(
             board=board,
             title=validated_data['title'],
             description=validated_data.get('description', ''),
@@ -228,8 +233,6 @@ class TaskCreateUpdateSerializer(serializers.Serializer):
             due_date=validated_data.get('due_date'),
             creator=user
         )
-
-        return task
 
     def update(self, instance, validated_data):
         """Aktualisiert bestehende Task"""

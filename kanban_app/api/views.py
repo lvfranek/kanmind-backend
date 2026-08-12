@@ -81,13 +81,23 @@ class BoardDetailUpdateView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        """Prüfe ob User Owner oder Member ist"""
-        if board.owner != request.user and request.user not in board.members.all():
+        permission_error = self._check_update_permission(board, request.user)
+        if permission_error:
+            return permission_error
+
+        return self._save_board(board, request)
+
+    def _check_update_permission(self, board, user):
+        """Prüft ob User Owner oder Member ist, sonst Fehler-Response"""
+        if board.owner != user and user not in board.members.all():
             return Response(
                 {"detail": "Keine Berechtigung dieses Board zu aktualisieren."},
                 status=status.HTTP_403_FORBIDDEN
             )
+        return None
 
+    def _save_board(self, board, request):
+        """Validiert und speichert die Board-Änderungen"""
         serializer = BoardCreateUpdateSerializer(
             board,
             data=request.data,
@@ -170,6 +180,10 @@ class TaskDetailUpdateDeleteView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        return self._save_task(task, request)
+
+    def _save_task(self, task, request):
+        """Validiert und speichert die Task-Änderungen"""
         serializer = TaskCreateUpdateSerializer(
             task,
             data=request.data,
@@ -257,13 +271,23 @@ class CommentListCreateView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        """Prüfe ob content im Body ist"""
+        validation_error = self._validate_content(request)
+        if validation_error:
+            return validation_error
+
+        return self._create_comment(task, request)
+
+    def _validate_content(self, request):
+        """Prüft ob content im Body ist, sonst Fehler-Response"""
         if 'content' not in request.data or not request.data['content']:
             return Response(
                 {"content": "Dieses Feld ist erforderlich."},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        return None
 
+    def _create_comment(self, task, request):
+        """Erstellt den Comment und gibt die Response zurück"""
         comment = Comment.objects.create(
             task=task,
             content=request.data['content'],

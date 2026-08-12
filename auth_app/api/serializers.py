@@ -37,19 +37,33 @@ class RegistrationSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         """Erstellt neuen User, UserProfile und Token"""
-        user = User.objects.create_user(
+        user = self._create_user(validated_data)
+        profile = self._create_profile(user, validated_data)
+        token = self._create_token(user)
+        return self._build_response(user, profile, token)
+
+    def _create_user(self, validated_data):
+        """Erstellt den User mit Email als Username"""
+        return User.objects.create_user(
             username=validated_data['email'],
             email=validated_data['email'],
             password=validated_data['password']
         )
 
-        profile = UserProfile.objects.create(
+    def _create_profile(self, user, validated_data):
+        """Erstellt das UserProfile für den User"""
+        return UserProfile.objects.create(
             user=user,
             fullname=validated_data['fullname']
         )
 
+    def _create_token(self, user):
+        """Erstellt oder holt den Auth-Token des Users"""
         token, created = Token.objects.get_or_create(user=user)
+        return token
 
+    def _build_response(self, user, profile, token):
+        """Baut das Response-Dict für die Registration"""
         return {
             'token': token.key,
             'fullname': profile.fullname,
