@@ -1,7 +1,10 @@
 import pytest
 from django.contrib.auth.models import User
+
 from rest_framework.test import APIClient
 from rest_framework import status
+
+from auth_app.models import UserProfile
 from kanban_app.models import Board, Task, Comment
 
 
@@ -94,6 +97,40 @@ class TestBoards:
 
         assert response.status_code == status.HTTP_200_OK
         assert self.other_user in board.members.all()
+
+    def test_delete_board_as_owner(self):
+        """Test: Owner kann Board erfolgreich löschen"""
+        board = Board.objects.create(title='Board', owner=self.user)
+
+        response = self.client.delete(f'/api/boards/{board.id}/')
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert not Board.objects.filter(id=board.id).exists()
+
+    def test_delete_board_not_owner(self):
+        """Test: Nicht-Owner kann Board nicht löschen"""
+        board = Board.objects.create(title='Board', owner=self.other_user)
+        board.members.add(self.user)
+
+        response = self.client.delete(f'/api/boards/{board.id}/')
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert Board.objects.filter(id=board.id).exists()
+
+    def test_delete_board_not_found(self):
+        """Test: 404 wenn Board nicht existiert"""
+        response = self.client.delete('/api/boards/999/')
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_delete_board_unauthenticated(self):
+        """Test: Board löschen schlägt fehl ohne Authentication"""
+        board = Board.objects.create(title='Board', owner=self.user)
+        self.client.force_authenticate(user=None)
+
+        response = self.client.delete(f'/api/boards/{board.id}/')
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.mark.django_db
@@ -230,10 +267,40 @@ class TestTasks:
             reviewer=self.user
         )
 
-        response = self.client.get('/api/tasks/reviewer/')
+        response = self.client.get('/api/tasks/reviewing/')
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 1
+
+    def test_get_tasks_by_reviewer_unauthenticated(self):
+        """Test: Reviewing Endpoint schlägt fehl ohne Authentication"""
+        self.client.force_authenticate(user=None)
+
+        response = self.client.get('/api/tasks/reviewing/')
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_get_tasks_assigned_to_me(self):
+        """Test: User sieht Tasks wo er Assignee ist"""
+        Task.objects.create(
+            board=self.board,
+            title='Task 1',
+            creator=self.user,
+            assignee=self.user
+        )
+
+        response = self.client.get('/api/tasks/assigned-to-me/')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 1
+
+    def test_get_tasks_assigned_to_me_unauthenticated(self):
+        """Test: Assigned-to-me schlägt fehl ohne Authentication"""
+        self.client.force_authenticate(user=None)
+
+        response = self.client.get('/api/tasks/assigned-to-me/')
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.mark.django_db
@@ -323,3 +390,53 @@ class TestComments:
         )
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db
+class TestEmailCheck:
+    """Tests für Email-Check Endpoint"""
+
+    def setup_method(self):
+        """Erstellt Test User mit Profile und authentifizierten Client"""
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='owner@example.com',
+            email='owner@example.com',
+            password='password123'
+        )
+        UserProfile.objects.create(user=self.user, fullname='Owner Name')
+        self.client.force_authenticate(user=self.user)
+
+    def test_email_check_success(self):
+        """Test: Email-Check findet existierenden User"""
+        response = self.client.get('/api/email-check/', {'email': 'owner@example.com'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['email'] == 'owner@example.com'
+        assert response.data['fullname'] == 'Owner Name'
+
+    def test_email_check_missing_param(self):
+        """Test: 400 wenn email Parameter fehlt"""
+        response = self.client.get('/api/email-check/')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_email_check_invalid_format(self):
+        """Test: 400 bei ungültigem Email-Format"""
+        response = self.client.get('/api/email-check/', {'email': 'not-an-email'})
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_email_check_not_found(self):
+        """Test: 404 wenn Email nicht existiert"""
+        response = self.client.get('/api/email-check/', {'email': 'unknown@example.com'})
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_email_check_unauthenticated(self):
+        """Test: Email-Check schlägt fehl ohne Authentication"""
+        self.client.force_authenticate(user=None)
+
+        response = self.client.get('/api/email-check/', {'email': 'owner@example.com'})
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

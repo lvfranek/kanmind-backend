@@ -110,6 +110,20 @@ class BoardCreateUpdateSerializer(serializers.Serializer):
         return instance
 
 
+class EmailCheckSerializer(serializers.Serializer):
+    """Serializer für Email-Check - validiert den Email Query-Parameter"""
+
+    email = serializers.EmailField(required=True)
+
+
+class EmailCheckResponseSerializer(serializers.Serializer):
+    """Serializer für Email-Check Response - formatiert die User Daten"""
+
+    id = serializers.IntegerField()
+    email = serializers.EmailField()
+    fullname = serializers.CharField()
+
+
 class CommentSerializer(serializers.ModelSerializer):
     """Serializer für Comments - zeigt Author als Name statt ID"""
 

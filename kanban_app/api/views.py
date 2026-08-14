@@ -1,10 +1,12 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from django.shortcuts import get_object_or_404
+from django.contrib.auth.models import User
 from django.db.models import Q
-from kanban_app.models import Board, Task, Comment
+from django.shortcuts import get_object_or_404
+
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework import status
+
 from kanban_app.api.serializers import (
     BoardListSerializer,
     BoardDetailSerializer,
@@ -12,8 +14,11 @@ from kanban_app.api.serializers import (
     TaskListSerializer,
     TaskDetailSerializer,
     TaskCreateUpdateSerializer,
-    CommentSerializer
+    CommentSerializer,
+    EmailCheckSerializer,
+    EmailCheckResponseSerializer
 )
+from kanban_app.models import Board, Task, Comment
 
 
 class BoardListCreateView(APIView):
@@ -43,8 +48,8 @@ class BoardListCreateView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class BoardDetailUpdateView(APIView):
-    """Endpoint für Board Detail (GET) und Update (PATCH) - /api/boards/{board_id}/"""
+class BoardDetailUpdateDeleteView(APIView):
+    """Endpoint für Board Detail (GET), Update (PATCH) und Delete - /api/boards/{board_id}/"""
 
     permission_classes = [IsAuthenticated]
 
@@ -110,6 +115,19 @@ class BoardDetailUpdateView(APIView):
             return Response(response_serializer.data, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, board_id):
+        """Löscht Board komplett - nur der Owner darf das"""
+        board = get_object_or_404(Board, id=board_id)
+
+        if board.owner != request.user:
+            return Response(
+                {"detail": "Nur der Owner darf dieses Board löschen."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        board.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class TaskListCreateView(APIView):
@@ -218,8 +236,21 @@ class TaskDetailUpdateDeleteView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class TaskAssignedToMeView(APIView):
+    """Endpoint für Tasks wo User Assignee ist - /api/tasks/assigned-to-me/"""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Gibt alle Tasks zurück wo User als Assignee eingetragen ist"""
+        tasks = Task.objects.filter(assignee=request.user)
+
+        serializer = TaskListSerializer(tasks, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class TaskByReviewerView(APIView):
-    """Endpoint für Tasks wo User Reviewer ist - /api/tasks/reviewer/"""
+    """Endpoint für Tasks wo User Reviewer ist - /api/tasks/reviewing/"""
 
     permission_classes = [IsAuthenticated]
 
@@ -334,3 +365,31 @@ class CommentDeleteView(APIView):
 
         comment.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class EmailCheckView(APIView):
+    """Endpoint prüft ob ein User mit gegebener Email existiert - /api/email-check/"""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Validiert Email Query-Parameter und sucht passenden User"""
+        serializer = EmailCheckSerializer(data=request.query_params)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        email = serializer.validated_data['email']
+        return self._find_user(email)
+
+    def _find_user(self, email):
+        """Sucht User anhand Email und gibt passende Response zurück"""
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response(
+                {"detail": "Kein User mit dieser Email gefunden."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        data = {"id": user.id, "email": user.email, "fullname": user.profile.fullname}
+        response_serializer = EmailCheckResponseSerializer(data)
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
