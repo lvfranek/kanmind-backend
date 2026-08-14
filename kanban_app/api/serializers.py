@@ -3,12 +3,24 @@ from django.contrib.auth.models import User
 from kanban_app.models import Board, Task, Comment
 
 
+def get_user_fullname(user):
+    """Gibt fullname aus Profile zurück, mit Email als Fallback ohne Profile"""
+    profile = getattr(user, 'profile', None)
+    return profile.fullname if profile else user.email
+
+
 class UserSimpleSerializer(serializers.ModelSerializer):
     """Serializer für User - zeigt nur wichtige Felder"""
 
+    fullname = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ["id", "email", "first_name"]
+        fields = ["id", "email", "fullname"]
+
+    def get_fullname(self, obj):
+        """Gibt fullname des Users zurück"""
+        return get_user_fullname(obj)
 
 
 class BoardListSerializer(serializers.ModelSerializer):
@@ -32,36 +44,55 @@ class BoardListSerializer(serializers.ModelSerializer):
         return obj.members.count()
 
     def get_ticket_count(self, obj):
-        """Platzhalter - wird später mit Tasks befüllt"""
-        return 0
+        """Zählt alle Tasks des Boards"""
+        return obj.tasks.count()
 
     def get_tasks_to_do_count(self, obj):
-        """Platzhalter - wird später mit Tasks befüllt"""
-        return 0
+        """Zählt Tasks mit Status to-do"""
+        return obj.tasks.filter(status='to-do').count()
 
     def get_tasks_high_prio_count(self, obj):
-        """Platzhalter - wird später mit Tasks befüllt"""
-        return 0
+        """Zählt Tasks mit Priorität high"""
+        return obj.tasks.filter(priority='high').count()
 
 
 class BoardDetailSerializer(serializers.ModelSerializer):
-    """Serializer für Board Detail - zeigt Board mit allen Members"""
+    """Serializer für Board Detail GET - zeigt Board mit Members und Tasks"""
 
-    members_data = serializers.SerializerMethodField()
-    owner_data = serializers.SerializerMethodField()
+    owner_id = serializers.IntegerField(source='owner.id', read_only=True)
+    members = serializers.SerializerMethodField()
+    tasks = serializers.SerializerMethodField()
 
     class Meta:
         model = Board
-        fields = ["id", "title", "owner_id", "owner_data", "members_data"]
+        fields = ["id", "title", "owner_id", "members", "tasks"]
 
-    def get_members_data(self, obj):
+    def get_members(self, obj):
         """Gibt alle Members als User Daten zurück"""
-        members = obj.members.all()
-        return UserSimpleSerializer(members, many=True).data
+        return UserSimpleSerializer(obj.members.all(), many=True).data
+
+    def get_tasks(self, obj):
+        """Gibt alle Tasks des Boards zurück"""
+        return TaskNestedSerializer(obj.tasks.all(), many=True).data
+
+
+class BoardUpdateResponseSerializer(serializers.ModelSerializer):
+    """Serializer für Board PATCH Response - zeigt Owner und Members verschachtelt"""
+
+    owner_data = serializers.SerializerMethodField()
+    members_data = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Board
+        fields = ["id", "title", "owner_data", "members_data"]
 
     def get_owner_data(self, obj):
         """Gibt Owner als User Daten zurück"""
         return UserSimpleSerializer(obj.owner).data
+
+    def get_members_data(self, obj):
+        """Gibt alle Members als User Daten zurück"""
+        return UserSimpleSerializer(obj.members.all(), many=True).data
 
 
 class BoardCreateUpdateSerializer(serializers.Serializer):
@@ -135,7 +166,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
     def get_author(self, obj):
         """Gibt Author Namen zurück"""
-        return obj.author.first_name or obj.author.email
+        return get_user_fullname(obj.author)
 
 
 class TaskListSerializer(serializers.ModelSerializer):
@@ -176,6 +207,39 @@ class TaskDetailSerializer(serializers.ModelSerializer):
     def get_comments_count(self, obj):
         """Zählt Anzahl der Comments"""
         return obj.comments.count()
+
+
+class TaskNestedSerializer(serializers.ModelSerializer):
+    """Serializer für Tasks verschachtelt im Board Detail - ohne board Feld"""
+
+    assignee = UserSimpleSerializer(read_only=True)
+    reviewer = UserSimpleSerializer(read_only=True)
+    comments_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Task
+        fields = [
+            "id", "title", "description", "status",
+            "priority", "assignee", "reviewer", "due_date", "comments_count"
+        ]
+
+    def get_comments_count(self, obj):
+        """Zählt Anzahl der Comments"""
+        return obj.comments.count()
+
+
+class TaskUpdateResponseSerializer(serializers.ModelSerializer):
+    """Serializer für Task PATCH Response - ohne board und comments_count"""
+
+    assignee = UserSimpleSerializer(read_only=True)
+    reviewer = UserSimpleSerializer(read_only=True)
+
+    class Meta:
+        model = Task
+        fields = [
+            "id", "title", "description", "status",
+            "priority", "assignee", "reviewer", "due_date"
+        ]
 
 
 class TaskCreateUpdateSerializer(serializers.Serializer):

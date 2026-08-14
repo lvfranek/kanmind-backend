@@ -10,13 +10,16 @@ from rest_framework import status
 from kanban_app.api.serializers import (
     BoardListSerializer,
     BoardDetailSerializer,
+    BoardUpdateResponseSerializer,
     BoardCreateUpdateSerializer,
     TaskListSerializer,
     TaskDetailSerializer,
+    TaskUpdateResponseSerializer,
     TaskCreateUpdateSerializer,
     CommentSerializer,
     EmailCheckSerializer,
-    EmailCheckResponseSerializer
+    EmailCheckResponseSerializer,
+    get_user_fullname
 )
 from kanban_app.models import Board, Task, Comment
 
@@ -111,7 +114,7 @@ class BoardDetailUpdateDeleteView(APIView):
         )
         if serializer.is_valid():
             updated_board = serializer.save()
-            response_serializer = BoardDetailSerializer(updated_board)
+            response_serializer = BoardUpdateResponseSerializer(updated_board)
             return Response(response_serializer.data, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -210,7 +213,7 @@ class TaskDetailUpdateDeleteView(APIView):
         )
         if serializer.is_valid():
             updated_task = serializer.save()
-            response_serializer = TaskListSerializer(updated_task)
+            response_serializer = TaskUpdateResponseSerializer(updated_task)
             return Response(response_serializer.data, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -390,6 +393,6 @@ class EmailCheckView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        data = {"id": user.id, "email": user.email, "fullname": user.profile.fullname}
+        data = {"id": user.id, "email": user.email, "fullname": get_user_fullname(user)}
         response_serializer = EmailCheckResponseSerializer(data)
         return Response(response_serializer.data, status=status.HTTP_200_OK)
