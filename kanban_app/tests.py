@@ -219,7 +219,7 @@ class TestTasks:
         assert response.data['title'] == 'New Task'
 
     def test_create_task_not_board_member(self):
-        """Test: Task create fails when the user is not a board member"""
+        """Test: Task create returns 403 when the user is not a board member"""
         self.client.force_authenticate(user=self.other_user)
         data = {
             'board': self.board.id,
@@ -227,7 +227,17 @@ class TestTasks:
         }
         response = self.client.post('/api/tasks/', data, format='json')
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_create_task_board_not_found(self):
+        """Test: Task create returns 404 when the board does not exist"""
+        data = {
+            'board': 999,
+            'title': 'New Task'
+        }
+        response = self.client.post('/api/tasks/', data, format='json')
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_list_tasks(self):
         """Test: User sees tasks from their own boards"""

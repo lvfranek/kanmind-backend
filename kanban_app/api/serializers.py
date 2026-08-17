@@ -260,12 +260,6 @@ class TaskCreateUpdateSerializer(serializers.Serializer):
     reviewer_id = serializers.IntegerField(required=False, allow_null=True)
     due_date = serializers.DateField(required=False, allow_null=True)
 
-    def validate_board(self, value):
-        """Checks that the Board exists"""
-        if not Board.objects.filter(id=value).exists():
-            raise serializers.ValidationError("Board does not exist.")
-        return value
-
     def validate_assignee_id(self, value):
         """Checks that the Assignee exists and is a Member of the Board"""
         if value is None:
@@ -288,15 +282,7 @@ class TaskCreateUpdateSerializer(serializers.Serializer):
         """Creates a new Task"""
         user = self.context['request'].user
         board = Board.objects.get(id=validated_data['board'])
-        self._check_board_membership(board, user)
         return self._create_task(board, user, validated_data)
-
-    def _check_board_membership(self, board, user):
-        """Checks that the User is a Member of the Board"""
-        if board.owner != user and user not in board.members.all():
-            raise serializers.ValidationError(
-                "You are not a member of this board."
-            )
 
     def _create_task(self, board, user, validated_data):
         """Creates the Task with the validated data"""

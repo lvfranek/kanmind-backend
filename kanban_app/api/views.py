@@ -155,11 +155,19 @@ class TaskListCreateView(APIView):
             data=request.data,
             context={'request': request}
         )
-        if serializer.is_valid():
-            task = serializer.save()
-            response_serializer = TaskListSerializer(task)
-            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        board = get_object_or_404(Board, id=serializer.validated_data['board'])
+        if board.owner != request.user and request.user not in board.members.all():
+            return Response(
+                {"detail": "You are not a member of this board."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        task = serializer.save()
+        response_serializer = TaskListSerializer(task)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
 
 class TaskDetailUpdateDeleteView(APIView):
