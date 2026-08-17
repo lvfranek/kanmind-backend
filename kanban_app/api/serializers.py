@@ -4,13 +4,13 @@ from kanban_app.models import Board, Task, Comment
 
 
 def get_user_fullname(user):
-    """Gibt fullname aus Profile zurück, mit Email als Fallback ohne Profile"""
+    """Returns fullname from Profile, with email as fallback without a Profile"""
     profile = getattr(user, 'profile', None)
     return profile.fullname if profile else user.email
 
 
 class UserSimpleSerializer(serializers.ModelSerializer):
-    """Serializer für User - zeigt nur wichtige Felder"""
+    """Serializer for User - shows only important fields"""
 
     fullname = serializers.SerializerMethodField()
 
@@ -19,12 +19,12 @@ class UserSimpleSerializer(serializers.ModelSerializer):
         fields = ["id", "email", "fullname"]
 
     def get_fullname(self, obj):
-        """Gibt fullname des Users zurück"""
+        """Returns the fullname of the User"""
         return get_user_fullname(obj)
 
 
 class BoardListSerializer(serializers.ModelSerializer):
-    """Serializer für Board Liste - zeigt Overview mit Counts"""
+    """Serializer for Board list - shows overview with counts"""
 
     member_count = serializers.SerializerMethodField()
     ticket_count = serializers.SerializerMethodField()
@@ -40,24 +40,24 @@ class BoardListSerializer(serializers.ModelSerializer):
         ]
 
     def get_member_count(self, obj):
-        """Zählt alle Members des Boards"""
+        """Counts all members of the Board"""
         return obj.members.count()
 
     def get_ticket_count(self, obj):
-        """Zählt alle Tasks des Boards"""
+        """Counts all tasks of the Board"""
         return obj.tasks.count()
 
     def get_tasks_to_do_count(self, obj):
-        """Zählt Tasks mit Status to-do"""
+        """Counts tasks with status to-do"""
         return obj.tasks.filter(status='to-do').count()
 
     def get_tasks_high_prio_count(self, obj):
-        """Zählt Tasks mit Priorität high"""
+        """Counts tasks with priority high"""
         return obj.tasks.filter(priority='high').count()
 
 
 class BoardDetailSerializer(serializers.ModelSerializer):
-    """Serializer für Board Detail GET - zeigt Board mit Members und Tasks"""
+    """Serializer for Board detail GET - shows Board with members and tasks"""
 
     owner_id = serializers.IntegerField(source='owner.id', read_only=True)
     members = serializers.SerializerMethodField()
@@ -68,16 +68,16 @@ class BoardDetailSerializer(serializers.ModelSerializer):
         fields = ["id", "title", "owner_id", "members", "tasks"]
 
     def get_members(self, obj):
-        """Gibt alle Members als User Daten zurück"""
+        """Returns all members as User data"""
         return UserSimpleSerializer(obj.members.all(), many=True).data
 
     def get_tasks(self, obj):
-        """Gibt alle Tasks des Boards zurück"""
+        """Returns all tasks of the Board"""
         return TaskNestedSerializer(obj.tasks.all(), many=True).data
 
 
 class BoardUpdateResponseSerializer(serializers.ModelSerializer):
-    """Serializer für Board PATCH Response - zeigt Owner und Members verschachtelt"""
+    """Serializer for Board PATCH response - shows Owner and Members nested"""
 
     owner_data = serializers.SerializerMethodField()
     members_data = serializers.SerializerMethodField()
@@ -87,16 +87,16 @@ class BoardUpdateResponseSerializer(serializers.ModelSerializer):
         fields = ["id", "title", "owner_data", "members_data"]
 
     def get_owner_data(self, obj):
-        """Gibt Owner als User Daten zurück"""
+        """Returns Owner as User data"""
         return UserSimpleSerializer(obj.owner).data
 
     def get_members_data(self, obj):
-        """Gibt alle Members als User Daten zurück"""
+        """Returns all members as User data"""
         return UserSimpleSerializer(obj.members.all(), many=True).data
 
 
 class BoardCreateUpdateSerializer(serializers.Serializer):
-    """Serializer für Board erstellen und aktualisieren"""
+    """Serializer for creating and updating a Board"""
 
     title = serializers.CharField(max_length=255, required=True)
     members = serializers.ListField(
@@ -105,23 +105,23 @@ class BoardCreateUpdateSerializer(serializers.Serializer):
     )
 
     def validate_members(self, value):
-        """Prüft ob alle Member-IDs existieren"""
+        """Checks that all member IDs exist"""
         for member_id in value:
             if not User.objects.filter(id=member_id).exists():
                 raise serializers.ValidationError(
-                    f"User mit ID {member_id} existiert nicht."
+                    f"User with ID {member_id} does not exist."
                 )
         return value
 
     def create(self, validated_data):
-        """Erstellt neues Board mit Members"""
+        """Creates a new Board with members"""
         user = self.context['request'].user
         board = Board.objects.create(
             title=validated_data['title'],
             owner=user
         )
 
-        """Füge Members hinzu wenn vorhanden"""
+        """Add members if provided"""
         if 'members' in validated_data:
             members = User.objects.filter(id__in=validated_data['members'])
             board.members.set(members)
@@ -129,11 +129,11 @@ class BoardCreateUpdateSerializer(serializers.Serializer):
         return board
 
     def update(self, instance, validated_data):
-        """Aktualisiert Board Titel und Members"""
+        """Updates Board title and members"""
         instance.title = validated_data.get('title', instance.title)
         instance.save()
 
-        """Aktualisiere Members wenn vorhanden"""
+        """Update members if provided"""
         if 'members' in validated_data:
             members = User.objects.filter(id__in=validated_data['members'])
             instance.members.set(members)
@@ -142,13 +142,13 @@ class BoardCreateUpdateSerializer(serializers.Serializer):
 
 
 class EmailCheckSerializer(serializers.Serializer):
-    """Serializer für Email-Check - validiert den Email Query-Parameter"""
+    """Serializer for Email-Check - validates the email query parameter"""
 
     email = serializers.EmailField(required=True)
 
 
 class EmailCheckResponseSerializer(serializers.Serializer):
-    """Serializer für Email-Check Response - formatiert die User Daten"""
+    """Serializer for Email-Check response - formats the User data"""
 
     id = serializers.IntegerField()
     email = serializers.EmailField()
@@ -156,7 +156,7 @@ class EmailCheckResponseSerializer(serializers.Serializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    """Serializer für Comments - zeigt Author als Name statt ID"""
+    """Serializer for Comments - shows Author as name instead of ID"""
 
     author = serializers.SerializerMethodField()
 
@@ -165,12 +165,12 @@ class CommentSerializer(serializers.ModelSerializer):
         fields = ["id", "created_at", "author", "content"]
 
     def get_author(self, obj):
-        """Gibt Author Namen zurück"""
+        """Returns the Author's name"""
         return get_user_fullname(obj.author)
 
 
 class TaskListSerializer(serializers.ModelSerializer):
-    """Serializer für Task Liste - zeigt Task Overview"""
+    """Serializer for Task list - shows Task overview"""
 
     assignee = UserSimpleSerializer(read_only=True)
     reviewer = UserSimpleSerializer(read_only=True)
@@ -184,12 +184,12 @@ class TaskListSerializer(serializers.ModelSerializer):
         ]
 
     def get_comments_count(self, obj):
-        """Zählt Anzahl der Comments"""
+        """Counts the number of Comments"""
         return obj.comments.count()
 
 
 class TaskDetailSerializer(serializers.ModelSerializer):
-    """Serializer für Task Detail - zeigt Task mit allen Comments"""
+    """Serializer for Task detail - shows Task with all Comments"""
 
     assignee = UserSimpleSerializer(read_only=True)
     reviewer = UserSimpleSerializer(read_only=True)
@@ -205,12 +205,12 @@ class TaskDetailSerializer(serializers.ModelSerializer):
         ]
 
     def get_comments_count(self, obj):
-        """Zählt Anzahl der Comments"""
+        """Counts the number of Comments"""
         return obj.comments.count()
 
 
 class TaskNestedSerializer(serializers.ModelSerializer):
-    """Serializer für Tasks verschachtelt im Board Detail - ohne board Feld"""
+    """Serializer for Tasks nested in Board detail - without board field"""
 
     assignee = UserSimpleSerializer(read_only=True)
     reviewer = UserSimpleSerializer(read_only=True)
@@ -224,12 +224,12 @@ class TaskNestedSerializer(serializers.ModelSerializer):
         ]
 
     def get_comments_count(self, obj):
-        """Zählt Anzahl der Comments"""
+        """Counts the number of Comments"""
         return obj.comments.count()
 
 
 class TaskUpdateResponseSerializer(serializers.ModelSerializer):
-    """Serializer für Task PATCH Response - ohne board und comments_count"""
+    """Serializer for Task PATCH response - without board and comments_count"""
 
     assignee = UserSimpleSerializer(read_only=True)
     reviewer = UserSimpleSerializer(read_only=True)
@@ -243,7 +243,7 @@ class TaskUpdateResponseSerializer(serializers.ModelSerializer):
 
 
 class TaskCreateUpdateSerializer(serializers.Serializer):
-    """Serializer für Task erstellen und aktualisieren"""
+    """Serializer for creating and updating a Task"""
 
     board = serializers.IntegerField(required=True)
     title = serializers.CharField(max_length=255, required=True)
@@ -261,45 +261,45 @@ class TaskCreateUpdateSerializer(serializers.Serializer):
     due_date = serializers.DateField(required=False, allow_null=True)
 
     def validate_board(self, value):
-        """Prüft ob Board existiert"""
+        """Checks that the Board exists"""
         if not Board.objects.filter(id=value).exists():
-            raise serializers.ValidationError("Board existiert nicht.")
+            raise serializers.ValidationError("Board does not exist.")
         return value
 
     def validate_assignee_id(self, value):
-        """Prüft ob Assignee existiert und Member des Boards ist"""
+        """Checks that the Assignee exists and is a Member of the Board"""
         if value is None:
             return value
 
         if not User.objects.filter(id=value).exists():
-            raise serializers.ValidationError("User existiert nicht.")
+            raise serializers.ValidationError("User does not exist.")
         return value
 
     def validate_reviewer_id(self, value):
-        """Prüft ob Reviewer existiert und Member des Boards ist"""
+        """Checks that the Reviewer exists and is a Member of the Board"""
         if value is None:
             return value
 
         if not User.objects.filter(id=value).exists():
-            raise serializers.ValidationError("User existiert nicht.")
+            raise serializers.ValidationError("User does not exist.")
         return value
 
     def create(self, validated_data):
-        """Erstellt neue Task"""
+        """Creates a new Task"""
         user = self.context['request'].user
         board = Board.objects.get(id=validated_data['board'])
         self._check_board_membership(board, user)
         return self._create_task(board, user, validated_data)
 
     def _check_board_membership(self, board, user):
-        """Prüft ob User Member des Boards ist"""
+        """Checks that the User is a Member of the Board"""
         if board.owner != user and user not in board.members.all():
             raise serializers.ValidationError(
-                "Du bist kein Member dieses Boards."
+                "You are not a member of this board."
             )
 
     def _create_task(self, board, user, validated_data):
-        """Erstellt die Task mit den validierten Daten"""
+        """Creates the Task with the validated data"""
         return Task.objects.create(
             board=board,
             title=validated_data['title'],
@@ -313,7 +313,7 @@ class TaskCreateUpdateSerializer(serializers.Serializer):
         )
 
     def update(self, instance, validated_data):
-        """Aktualisiert bestehende Task"""
+        """Updates the existing Task"""
         instance.title = validated_data.get('title', instance.title)
         instance.description = validated_data.get(
             'description', instance.description)

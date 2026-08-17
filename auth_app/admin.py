@@ -4,7 +4,7 @@ from auth_app.models import UserProfile
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    """Admin für UserProfile - zeigt fullname und User"""
+    """Admin for UserProfile - shows fullname and User"""
 
     list_display = ["id", "fullname", "user"]
     search_fields = ["fullname", "user__email"]

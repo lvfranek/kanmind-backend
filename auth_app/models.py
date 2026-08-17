@@ -3,19 +3,19 @@ from django.contrib.auth.models import User
 
 
 class UserProfile(models.Model):
-    """Erweitert Django User mit zusätzlichem fullname Feld"""
+    """Extends the Django User with an additional fullname field"""
 
-    """1:1 Verbindung zu User - wird gelöscht wenn User gelöscht wird"""
+    """1:1 relation to User - deleted when the User is deleted"""
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
         related_name="profile"
     )
 
-    """Speichert den vollständigen Namen"""
+    """Stores the full name"""
     fullname = models.CharField(max_length=255)
 
-    """String-Darstellung in Admin und Logs"""
+    """String representation in Admin and logs"""
     def __str__(self):
         return self.fullname
 

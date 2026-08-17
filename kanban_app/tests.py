@@ -10,10 +10,10 @@ from kanban_app.models import Board, Task, Comment
 
 @pytest.mark.django_db
 class TestBoards:
-    """Tests für Board CRUD Operationen"""
+    """Tests for Board CRUD operations"""
 
     def setup_method(self):
-        """Erstellt Test User und authentifizierten Client"""
+        """Creates test user and authenticated client"""
         self.client = APIClient()
         self.user = User.objects.create_user(
             username='owner@example.com',
@@ -28,24 +28,24 @@ class TestBoards:
         self.client.force_authenticate(user=self.user)
 
     def test_create_board_success(self):
-        """Test: Board wird erfolgreich erstellt"""
-        data = {'title': 'Mein Board', 'members': []}
+        """Test: Board is created successfully"""
+        data = {'title': 'My Board', 'members': []}
         response = self.client.post('/api/boards/', data, format='json')
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data['title'] == 'Mein Board'
+        assert response.data['title'] == 'My Board'
         assert response.data['owner_id'] == self.user.id
 
     def test_create_board_unauthenticated(self):
-        """Test: Board erstellen schlägt fehl ohne Authentication"""
+        """Test: Board create fails without authentication"""
         self.client.force_authenticate(user=None)
-        data = {'title': 'Mein Board'}
+        data = {'title': 'My Board'}
         response = self.client.post('/api/boards/', data, format='json')
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_list_boards(self):
-        """Test: User sieht nur eigene Boards"""
+        """Test: User sees only their own boards"""
         Board.objects.create(title='Board 1', owner=self.user)
         Board.objects.create(title='Board 2', owner=self.other_user)
 
@@ -55,7 +55,7 @@ class TestBoards:
         assert len(response.data) == 1
 
     def test_get_board_detail_as_owner(self):
-        """Test: Owner kann Board Details abrufen"""
+        """Test: Owner can retrieve board details"""
         board = Board.objects.create(title='Board 1', owner=self.user)
         board.members.add(self.other_user)
 
@@ -69,7 +69,7 @@ class TestBoards:
         assert 'members_data' not in response.data
 
     def test_get_board_detail_includes_tasks(self):
-        """Test: Board Detail enthält verschachtelte Tasks ohne board Feld"""
+        """Test: Board detail includes nested tasks without a board field"""
         board = Board.objects.create(title='Board 1', owner=self.user)
         Task.objects.create(
             board=board, title='Task 1', creator=self.user,
@@ -85,7 +85,7 @@ class TestBoards:
         assert 'board' not in task_data
 
     def test_list_boards_task_counts(self):
-        """Test: Board Liste zeigt korrekte Task Counts statt Platzhalter"""
+        """Test: Board list shows correct task counts instead of placeholders"""
         board = Board.objects.create(title='Board 1', owner=self.user)
         Task.objects.create(
             board=board, title='Task 1', creator=self.user,
@@ -104,7 +104,7 @@ class TestBoards:
         assert data['tasks_high_prio_count'] == 1
 
     def test_get_board_detail_no_access(self):
-        """Test: Kein Zugriff auf fremdes Board"""
+        """Test: No access to another user's board"""
         board = Board.objects.create(title='Board 1', owner=self.other_user)
 
         response = self.client.get(f'/api/boards/{board.id}/')
@@ -112,24 +112,24 @@ class TestBoards:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_get_board_not_found(self):
-        """Test: 404 wenn Board nicht existiert"""
+        """Test: 404 when the board does not exist"""
         response = self.client.get('/api/boards/999/')
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_update_board_success(self):
-        """Test: Owner kann Board Titel aktualisieren"""
-        board = Board.objects.create(title='Alt', owner=self.user)
-        data = {'title': 'Neu'}
+        """Test: Owner can update the board title"""
+        board = Board.objects.create(title='Old', owner=self.user)
+        data = {'title': 'New'}
 
         response = self.client.patch(f'/api/boards/{board.id}/', data, format='json')
 
         assert response.status_code == status.HTTP_200_OK
         board.refresh_from_db()
-        assert board.title == 'Neu'
+        assert board.title == 'New'
 
     def test_update_board_add_members(self):
-        """Test: Owner kann Members hinzufügen"""
+        """Test: Owner can add members"""
         board = Board.objects.create(title='Board', owner=self.user)
         data = {'members': [self.other_user.id]}
 
@@ -139,7 +139,7 @@ class TestBoards:
         assert self.other_user in board.members.all()
 
     def test_update_board_response_format(self):
-        """Test: PATCH Board gibt owner_data/members_data zurück, kein tasks Feld"""
+        """Test: PATCH board returns owner_data/members_data, no tasks field"""
         board = Board.objects.create(title='Board', owner=self.user)
         data = {'members': [self.other_user.id]}
 
@@ -151,7 +151,7 @@ class TestBoards:
         assert 'members' not in response.data
 
     def test_delete_board_as_owner(self):
-        """Test: Owner kann Board erfolgreich löschen"""
+        """Test: Owner can delete a board successfully"""
         board = Board.objects.create(title='Board', owner=self.user)
 
         response = self.client.delete(f'/api/boards/{board.id}/')
@@ -160,7 +160,7 @@ class TestBoards:
         assert not Board.objects.filter(id=board.id).exists()
 
     def test_delete_board_not_owner(self):
-        """Test: Nicht-Owner kann Board nicht löschen"""
+        """Test: Non-owner cannot delete a board"""
         board = Board.objects.create(title='Board', owner=self.other_user)
         board.members.add(self.user)
 
@@ -170,13 +170,13 @@ class TestBoards:
         assert Board.objects.filter(id=board.id).exists()
 
     def test_delete_board_not_found(self):
-        """Test: 404 wenn Board nicht existiert"""
+        """Test: 404 when the board does not exist"""
         response = self.client.delete('/api/boards/999/')
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_delete_board_unauthenticated(self):
-        """Test: Board löschen schlägt fehl ohne Authentication"""
+        """Test: Board delete fails without authentication"""
         board = Board.objects.create(title='Board', owner=self.user)
         self.client.force_authenticate(user=None)
 
@@ -187,10 +187,10 @@ class TestBoards:
 
 @pytest.mark.django_db
 class TestTasks:
-    """Tests für Task CRUD Operationen"""
+    """Tests for Task CRUD operations"""
 
     def setup_method(self):
-        """Erstellt Test User, Board und authentifizierten Client"""
+        """Creates test user, board and authenticated client"""
         self.client = APIClient()
         self.user = User.objects.create_user(
             username='owner@example.com',
@@ -206,31 +206,31 @@ class TestTasks:
         self.client.force_authenticate(user=self.user)
 
     def test_create_task_success(self):
-        """Test: Task wird erfolgreich erstellt"""
+        """Test: Task is created successfully"""
         data = {
             'board': self.board.id,
-            'title': 'Neue Task',
+            'title': 'New Task',
             'status': 'to-do',
             'priority': 'high'
         }
         response = self.client.post('/api/tasks/', data, format='json')
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data['title'] == 'Neue Task'
+        assert response.data['title'] == 'New Task'
 
     def test_create_task_not_board_member(self):
-        """Test: Task erstellen schlägt fehl wenn User kein Board Member"""
+        """Test: Task create fails when the user is not a board member"""
         self.client.force_authenticate(user=self.other_user)
         data = {
             'board': self.board.id,
-            'title': 'Neue Task'
+            'title': 'New Task'
         }
         response = self.client.post('/api/tasks/', data, format='json')
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_list_tasks(self):
-        """Test: User sieht Tasks von eigenen Boards"""
+        """Test: User sees tasks from their own boards"""
         Task.objects.create(
             board=self.board,
             title='Task 1',
@@ -243,7 +243,7 @@ class TestTasks:
         assert len(response.data) == 1
 
     def test_get_task_detail(self):
-        """Test: Task Detail wird korrekt abgerufen"""
+        """Test: Task detail is retrieved correctly"""
         task = Task.objects.create(
             board=self.board,
             title='Task 1',
@@ -256,7 +256,7 @@ class TestTasks:
         assert response.data['title'] == 'Task 1'
 
     def test_get_task_no_access(self):
-        """Test: Kein Zugriff auf Task von fremdem Board"""
+        """Test: No access to a task from another user's board"""
         other_board = Board.objects.create(title='Other', owner=self.other_user)
         task = Task.objects.create(
             board=other_board,
@@ -269,10 +269,10 @@ class TestTasks:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_update_task_success(self):
-        """Test: Task wird erfolgreich aktualisiert"""
+        """Test: Task is updated successfully"""
         task = Task.objects.create(
             board=self.board,
-            title='Alt',
+            title='Old',
             creator=self.user
         )
         data = {'status': 'done'}
@@ -284,10 +284,10 @@ class TestTasks:
         assert task.status == 'done'
 
     def test_update_task_response_format(self):
-        """Test: PATCH Task Response enthält kein board und kein comments_count"""
+        """Test: PATCH task response has no board and no comments_count"""
         task = Task.objects.create(
             board=self.board,
-            title='Alt',
+            title='Old',
             creator=self.user
         )
         data = {'status': 'done'}
@@ -298,7 +298,7 @@ class TestTasks:
         assert 'comments_count' not in response.data
 
     def test_task_assignee_fullname_fallback_without_profile(self):
-        """Test: assignee ohne Profile nutzt Email als fullname Fallback"""
+        """Test: assignee without a profile uses email as fullname fallback"""
         task = Task.objects.create(
             board=self.board, title='Task', creator=self.user,
             assignee=self.other_user
@@ -309,7 +309,7 @@ class TestTasks:
         assert response.data['assignee']['fullname'] == self.other_user.email
 
     def test_task_assignee_fullname_with_profile(self):
-        """Test: assignee mit Profile nutzt fullname aus Profile"""
+        """Test: assignee with a profile uses fullname from the profile"""
         UserProfile.objects.create(user=self.other_user, fullname='Other Name')
         task = Task.objects.create(
             board=self.board, title='Task', creator=self.user,
@@ -321,7 +321,7 @@ class TestTasks:
         assert response.data['assignee']['fullname'] == 'Other Name'
 
     def test_delete_task_as_creator(self):
-        """Test: Creator kann eigene Task löschen"""
+        """Test: Creator can delete their own task"""
         task = Task.objects.create(
             board=self.board,
             title='Task',
@@ -334,7 +334,7 @@ class TestTasks:
         assert not Task.objects.filter(id=task.id).exists()
 
     def test_delete_task_no_permission(self):
-        """Test: Nicht-Creator kann Task nicht löschen"""
+        """Test: Non-creator cannot delete a task"""
         self.board.members.add(self.other_user)
         task = Task.objects.create(
             board=self.board,
@@ -348,7 +348,7 @@ class TestTasks:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_get_tasks_by_reviewer(self):
-        """Test: User sieht Tasks wo er Reviewer ist"""
+        """Test: User sees tasks where they are Reviewer"""
         Task.objects.create(
             board=self.board,
             title='Task 1',
@@ -362,7 +362,7 @@ class TestTasks:
         assert len(response.data) == 1
 
     def test_get_tasks_by_reviewer_unauthenticated(self):
-        """Test: Reviewing Endpoint schlägt fehl ohne Authentication"""
+        """Test: Reviewing endpoint fails without authentication"""
         self.client.force_authenticate(user=None)
 
         response = self.client.get('/api/tasks/reviewing/')
@@ -370,7 +370,7 @@ class TestTasks:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_get_tasks_assigned_to_me(self):
-        """Test: User sieht Tasks wo er Assignee ist"""
+        """Test: User sees tasks where they are Assignee"""
         Task.objects.create(
             board=self.board,
             title='Task 1',
@@ -384,7 +384,7 @@ class TestTasks:
         assert len(response.data) == 1
 
     def test_get_tasks_assigned_to_me_unauthenticated(self):
-        """Test: Assigned-to-me schlägt fehl ohne Authentication"""
+        """Test: Assigned-to-me fails without authentication"""
         self.client.force_authenticate(user=None)
 
         response = self.client.get('/api/tasks/assigned-to-me/')
@@ -394,10 +394,10 @@ class TestTasks:
 
 @pytest.mark.django_db
 class TestComments:
-    """Tests für Comment CRUD Operationen"""
+    """Tests for Comment CRUD operations"""
 
     def setup_method(self):
-        """Erstellt Test User, Board, Task und authentifizierten Client"""
+        """Creates test user, board, task and authenticated client"""
         self.client = APIClient()
         self.user = User.objects.create_user(
             username='owner@example.com',
@@ -418,19 +418,19 @@ class TestComments:
         self.client.force_authenticate(user=self.user)
 
     def test_create_comment_success(self):
-        """Test: Comment wird erfolgreich erstellt"""
-        data = {'content': 'Mein Kommentar'}
+        """Test: Comment is created successfully"""
+        data = {'content': 'My comment'}
         response = self.client.post(
             f'/api/tasks/{self.task.id}/comments/', data, format='json'
         )
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data['content'] == 'Mein Kommentar'
+        assert response.data['content'] == 'My comment'
 
     def test_create_comment_author_fullname(self):
-        """Test: Author wird als fullname aus Profile zurückgegeben"""
+        """Test: Author is returned as fullname from the profile"""
         UserProfile.objects.create(user=self.user, fullname='Owner Name')
-        data = {'content': 'Mein Kommentar'}
+        data = {'content': 'My comment'}
 
         response = self.client.post(
             f'/api/tasks/{self.task.id}/comments/', data, format='json'
@@ -439,7 +439,7 @@ class TestComments:
         assert response.data['author'] == 'Owner Name'
 
     def test_create_comment_empty_content(self):
-        """Test: Comment erstellen schlägt fehl bei leerem Content"""
+        """Test: Comment create fails with empty content"""
         data = {'content': ''}
         response = self.client.post(
             f'/api/tasks/{self.task.id}/comments/', data, format='json'
@@ -448,10 +448,10 @@ class TestComments:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_list_comments(self):
-        """Test: Comments werden korrekt aufgelistet"""
+        """Test: Comments are listed correctly"""
         Comment.objects.create(
             task=self.task,
-            content='Kommentar 1',
+            content='Comment 1',
             author=self.user
         )
 
@@ -461,10 +461,10 @@ class TestComments:
         assert len(response.data) == 1
 
     def test_delete_comment_as_author(self):
-        """Test: Author kann eigenen Comment löschen"""
+        """Test: Author can delete their own comment"""
         comment = Comment.objects.create(
             task=self.task,
-            content='Kommentar',
+            content='Comment',
             author=self.user
         )
 
@@ -476,11 +476,11 @@ class TestComments:
         assert not Comment.objects.filter(id=comment.id).exists()
 
     def test_delete_comment_no_permission(self):
-        """Test: Nicht-Author kann Comment nicht löschen"""
+        """Test: Non-author cannot delete a comment"""
         self.board.members.add(self.other_user)
         comment = Comment.objects.create(
             task=self.task,
-            content='Kommentar',
+            content='Comment',
             author=self.user
         )
 
@@ -494,10 +494,10 @@ class TestComments:
 
 @pytest.mark.django_db
 class TestEmailCheck:
-    """Tests für Email-Check Endpoint"""
+    """Tests for the Email-Check endpoint"""
 
     def setup_method(self):
-        """Erstellt Test User mit Profile und authentifizierten Client"""
+        """Creates test user with profile and authenticated client"""
         self.client = APIClient()
         self.user = User.objects.create_user(
             username='owner@example.com',
@@ -508,7 +508,7 @@ class TestEmailCheck:
         self.client.force_authenticate(user=self.user)
 
     def test_email_check_success(self):
-        """Test: Email-Check findet existierenden User"""
+        """Test: Email-Check finds an existing user"""
         response = self.client.get('/api/email-check/', {'email': 'owner@example.com'})
 
         assert response.status_code == status.HTTP_200_OK
@@ -516,25 +516,25 @@ class TestEmailCheck:
         assert response.data['fullname'] == 'Owner Name'
 
     def test_email_check_missing_param(self):
-        """Test: 400 wenn email Parameter fehlt"""
+        """Test: 400 when the email parameter is missing"""
         response = self.client.get('/api/email-check/')
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_email_check_invalid_format(self):
-        """Test: 400 bei ungültigem Email-Format"""
+        """Test: 400 with an invalid email format"""
         response = self.client.get('/api/email-check/', {'email': 'not-an-email'})
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_email_check_not_found(self):
-        """Test: 404 wenn Email nicht existiert"""
+        """Test: 404 when the email does not exist"""
         response = self.client.get('/api/email-check/', {'email': 'unknown@example.com'})
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_email_check_unauthenticated(self):
-        """Test: Email-Check schlägt fehl ohne Authentication"""
+        """Test: Email-Check fails without authentication"""
         self.client.force_authenticate(user=None)
 
         response = self.client.get('/api/email-check/', {'email': 'owner@example.com'})

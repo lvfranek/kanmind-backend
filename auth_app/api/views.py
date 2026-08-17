@@ -11,12 +11,12 @@ from auth_app.api.serializers import (
 
 
 class RegistrationView(APIView):
-    """Endpoint für User Registrierung - POST /api/registration/"""
+    """Endpoint for User Registration - POST /api/registration/"""
 
     permission_classes = [AllowAny]
 
     def post(self, request):
-        """Verarbeitet POST Request - erstellt neuen User und Token"""
+        """Handles POST request - creates a new User and Token"""
         serializer = RegistrationSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.save()
@@ -25,18 +25,18 @@ class RegistrationView(APIView):
 
 
 class LoginView(APIView):
-    """Endpoint für User Login - POST /api/login/"""
+    """Endpoint for User Login - POST /api/login/"""
 
     permission_classes = [AllowAny]
 
     def post(self, request):
-        """Verarbeitet POST Request - authentifiziert User und gibt Token zurück"""
+        """Handles POST request - authenticates the User and returns a token"""
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.validated_data['user']
             token, created = Token.objects.get_or_create(user=user)
 
-            """Erstelle Response mit Token und User-Infos"""
+            """Build response with token and user info"""
             response_data = {
                 'token': token.key,
                 'fullname': user.profile.fullname,

@@ -25,12 +25,12 @@ from kanban_app.models import Board, Task, Comment
 
 
 class BoardListCreateView(APIView):
-    """Endpoint für Board Liste (GET) und erstellen (POST) - /api/boards/"""
+    """Endpoint for Board list (GET) and create (POST) - /api/boards/"""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        """Gibt alle Boards zurück wo User Owner oder Member ist"""
+        """Returns all Boards where the User is Owner or Member"""
         boards = Board.objects.filter(
             Q(owner=request.user) | Q(members=request.user)
         ).distinct()
@@ -39,7 +39,7 @@ class BoardListCreateView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
-        """Erstellt neues Board - User wird automatisch Owner"""
+        """Creates a new Board - User automatically becomes Owner"""
         serializer = BoardCreateUpdateSerializer(
             data=request.data,
             context={'request': request}
@@ -52,27 +52,27 @@ class BoardListCreateView(APIView):
 
 
 class BoardDetailUpdateDeleteView(APIView):
-    """Endpoint für Board Detail (GET), Update (PATCH) und Delete - /api/boards/{board_id}/"""
+    """Endpoint for Board detail (GET), update (PATCH) and delete - /api/boards/{board_id}/"""
 
     permission_classes = [IsAuthenticated]
 
     def get_board(self, board_id, user):
-        """Prüft ob User Zugriff auf Board hat"""
+        """Checks whether the User has access to the Board"""
         board = get_object_or_404(Board, id=board_id)
 
-        """Prüfe ob User Owner oder Member ist"""
+        """Check whether the User is Owner or Member"""
         if board.owner != user and user not in board.members.all():
             return None
 
         return board
 
     def get(self, request, board_id):
-        """Gibt Board Detail mit allen Members zurück"""
+        """Returns Board detail with all Members"""
         board = self.get_board(board_id, request.user)
 
         if not board:
             return Response(
-                {"detail": "Board nicht gefunden oder kein Zugriff."},
+                {"detail": "Board not found or no access."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -80,12 +80,12 @@ class BoardDetailUpdateDeleteView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def patch(self, request, board_id):
-        """Aktualisiert Board Titel und Members"""
+        """Updates Board title and members"""
         board = self.get_board(board_id, request.user)
 
         if not board:
             return Response(
-                {"detail": "Board nicht gefunden oder kein Zugriff."},
+                {"detail": "Board not found or no access."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -96,16 +96,16 @@ class BoardDetailUpdateDeleteView(APIView):
         return self._save_board(board, request)
 
     def _check_update_permission(self, board, user):
-        """Prüft ob User Owner oder Member ist, sonst Fehler-Response"""
+        """Checks whether the User is Owner or Member, otherwise returns an error response"""
         if board.owner != user and user not in board.members.all():
             return Response(
-                {"detail": "Keine Berechtigung dieses Board zu aktualisieren."},
+                {"detail": "No permission to update this board."},
                 status=status.HTTP_403_FORBIDDEN
             )
         return None
 
     def _save_board(self, board, request):
-        """Validiert und speichert die Board-Änderungen"""
+        """Validates and saves the Board changes"""
         serializer = BoardCreateUpdateSerializer(
             board,
             data=request.data,
@@ -120,12 +120,12 @@ class BoardDetailUpdateDeleteView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, board_id):
-        """Löscht Board komplett - nur der Owner darf das"""
+        """Deletes the Board completely - only the Owner may do this"""
         board = get_object_or_404(Board, id=board_id)
 
         if board.owner != request.user:
             return Response(
-                {"detail": "Nur der Owner darf dieses Board löschen."},
+                {"detail": "Only the Owner may delete this board."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -134,12 +134,12 @@ class BoardDetailUpdateDeleteView(APIView):
 
 
 class TaskListCreateView(APIView):
-    """Endpoint für Tasks eines Boards (GET) und Task erstellen (POST) - /api/tasks/"""
+    """Endpoint for a Board's Tasks (GET) and Task create (POST) - /api/tasks/"""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        """Gibt alle Tasks des authentifizierten Users zurück"""
+        """Returns all Tasks of the authenticated User"""
         tasks = Task.objects.filter(
             board__members=request.user
         ) | Task.objects.filter(
@@ -150,7 +150,7 @@ class TaskListCreateView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
-        """Erstellt neue Task im Board"""
+        """Creates a new Task in the Board"""
         serializer = TaskCreateUpdateSerializer(
             data=request.data,
             context={'request': request}
@@ -163,28 +163,28 @@ class TaskListCreateView(APIView):
 
 
 class TaskDetailUpdateDeleteView(APIView):
-    """Endpoint für Task Detail (GET), Update (PATCH) und Delete - /api/tasks/{task_id}/"""
+    """Endpoint for Task detail (GET), update (PATCH) and delete - /api/tasks/{task_id}/"""
 
     permission_classes = [IsAuthenticated]
 
     def get_task(self, task_id, user):
-        """Prüft ob User Zugriff auf Task hat"""
+        """Checks whether the User has access to the Task"""
         task = get_object_or_404(Task, id=task_id)
         board = task.board
 
-        """Prüfe ob User Member oder Owner des Boards ist"""
+        """Check whether the User is Member or Owner of the Board"""
         if board.owner != user and user not in board.members.all():
             return None
 
         return task
 
     def get(self, request, task_id):
-        """Gibt Task Details mit Comments zurück"""
+        """Returns Task details with Comments"""
         task = self.get_task(task_id, request.user)
 
         if not task:
             return Response(
-                {"detail": "Task nicht gefunden oder kein Zugriff."},
+                {"detail": "Task not found or no access."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -192,19 +192,19 @@ class TaskDetailUpdateDeleteView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def patch(self, request, task_id):
-        """Aktualisiert Task - nur Board Member dürfen das"""
+        """Updates a Task - only Board Members may do this"""
         task = self.get_task(task_id, request.user)
 
         if not task:
             return Response(
-                {"detail": "Task nicht gefunden oder kein Zugriff."},
+                {"detail": "Task not found or no access."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
         return self._save_task(task, request)
 
     def _save_task(self, task, request):
-        """Validiert und speichert die Task-Änderungen"""
+        """Validates and saves the Task changes"""
         serializer = TaskCreateUpdateSerializer(
             task,
             data=request.data,
@@ -219,19 +219,19 @@ class TaskDetailUpdateDeleteView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, task_id):
-        """Löscht Task - nur Task Creator oder Board Owner dürfen das"""
+        """Deletes a Task - only the Task Creator or Board Owner may do this"""
         task = self.get_task(task_id, request.user)
 
         if not task:
             return Response(
-                {"detail": "Task nicht gefunden oder kein Zugriff."},
+                {"detail": "Task not found or no access."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        """Nur Creator oder Board Owner dürfen löschen"""
+        """Only the Creator or Board Owner may delete"""
         if task.creator != request.user and task.board.owner != request.user:
             return Response(
-                {"detail": "Keine Berechtigung diese Task zu löschen."},
+                {"detail": "No permission to delete this task."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -240,12 +240,12 @@ class TaskDetailUpdateDeleteView(APIView):
 
 
 class TaskAssignedToMeView(APIView):
-    """Endpoint für Tasks wo User Assignee ist - /api/tasks/assigned-to-me/"""
+    """Endpoint for Tasks where the User is Assignee - /api/tasks/assigned-to-me/"""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        """Gibt alle Tasks zurück wo User als Assignee eingetragen ist"""
+        """Returns all Tasks where the User is set as Assignee"""
         tasks = Task.objects.filter(assignee=request.user)
 
         serializer = TaskListSerializer(tasks, many=True)
@@ -253,12 +253,12 @@ class TaskAssignedToMeView(APIView):
 
 
 class TaskByReviewerView(APIView):
-    """Endpoint für Tasks wo User Reviewer ist - /api/tasks/reviewing/"""
+    """Endpoint for Tasks where the User is Reviewer - /api/tasks/reviewing/"""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        """Gibt alle Tasks zurück wo User als Reviewer eingetragen ist"""
+        """Returns all Tasks where the User is set as Reviewer"""
         tasks = Task.objects.filter(reviewer=request.user)
 
         serializer = TaskListSerializer(tasks, many=True)
@@ -266,28 +266,28 @@ class TaskByReviewerView(APIView):
 
 
 class CommentListCreateView(APIView):
-    """Endpoint für Comments einer Task - /api/tasks/{task_id}/comments/"""
+    """Endpoint for a Task's Comments - /api/tasks/{task_id}/comments/"""
 
     permission_classes = [IsAuthenticated]
 
     def get_task(self, task_id, user):
-        """Prüft ob User Zugriff auf Task hat"""
+        """Checks whether the User has access to the Task"""
         task = get_object_or_404(Task, id=task_id)
         board = task.board
 
-        """Prüfe ob User Member oder Owner des Boards ist"""
+        """Check whether the User is Member or Owner of the Board"""
         if board.owner != user and user not in board.members.all():
             return None
 
         return task
 
     def get(self, request, task_id):
-        """Gibt alle Comments der Task zurück"""
+        """Returns all Comments of the Task"""
         task = self.get_task(task_id, request.user)
 
         if not task:
             return Response(
-                {"detail": "Task nicht gefunden oder kein Zugriff."},
+                {"detail": "Task not found or no access."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -296,12 +296,12 @@ class CommentListCreateView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request, task_id):
-        """Erstellt neuen Comment für die Task"""
+        """Creates a new Comment for the Task"""
         task = self.get_task(task_id, request.user)
 
         if not task:
             return Response(
-                {"detail": "Task nicht gefunden oder kein Zugriff."},
+                {"detail": "Task not found or no access."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -312,16 +312,16 @@ class CommentListCreateView(APIView):
         return self._create_comment(task, request)
 
     def _validate_content(self, request):
-        """Prüft ob content im Body ist, sonst Fehler-Response"""
+        """Checks whether content is present in the body, otherwise returns an error response"""
         if 'content' not in request.data or not request.data['content']:
             return Response(
-                {"content": "Dieses Feld ist erforderlich."},
+                {"content": "This field is required."},
                 status=status.HTTP_400_BAD_REQUEST
             )
         return None
 
     def _create_comment(self, task, request):
-        """Erstellt den Comment und gibt die Response zurück"""
+        """Creates the Comment and returns the response"""
         comment = Comment.objects.create(
             task=task,
             content=request.data['content'],
@@ -333,36 +333,36 @@ class CommentListCreateView(APIView):
 
 
 class CommentDeleteView(APIView):
-    """Endpoint zum Löschen eines Comments - /api/tasks/{task_id}/comments/{comment_id}/"""
+    """Endpoint for deleting a Comment - /api/tasks/{task_id}/comments/{comment_id}/"""
 
     permission_classes = [IsAuthenticated]
 
     def get_comment(self, task_id, comment_id, user):
-        """Prüft ob User Zugriff auf Comment hat"""
+        """Checks whether the User has access to the Comment"""
         task = get_object_or_404(Task, id=task_id)
         comment = get_object_or_404(Comment, id=comment_id, task=task)
         board = task.board
 
-        """Prüfe ob User Member oder Owner des Boards ist"""
+        """Check whether the User is Member or Owner of the Board"""
         if board.owner != user and user not in board.members.all():
             return None
 
         return comment
 
     def delete(self, request, task_id, comment_id):
-        """Löscht Comment - nur Comment Author darf das"""
+        """Deletes a Comment - only the Comment Author may do this"""
         comment = self.get_comment(task_id, comment_id, request.user)
 
         if not comment:
             return Response(
-                {"detail": "Comment nicht gefunden oder kein Zugriff."},
+                {"detail": "Comment not found or no access."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        """Nur Author darf Comment löschen"""
+        """Only the Author may delete the Comment"""
         if comment.author != request.user:
             return Response(
-                {"detail": "Keine Berechtigung diesen Comment zu löschen."},
+                {"detail": "No permission to delete this comment."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -371,12 +371,12 @@ class CommentDeleteView(APIView):
 
 
 class EmailCheckView(APIView):
-    """Endpoint prüft ob ein User mit gegebener Email existiert - /api/email-check/"""
+    """Endpoint checks whether a User with the given email exists - /api/email-check/"""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        """Validiert Email Query-Parameter und sucht passenden User"""
+        """Validates the email query parameter and looks up the matching User"""
         serializer = EmailCheckSerializer(data=request.query_params)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -385,11 +385,11 @@ class EmailCheckView(APIView):
         return self._find_user(email)
 
     def _find_user(self, email):
-        """Sucht User anhand Email und gibt passende Response zurück"""
+        """Looks up the User by email and returns the matching response"""
         user = User.objects.filter(email=email).first()
         if not user:
             return Response(
-                {"detail": "Kein User mit dieser Email gefunden."},
+                {"detail": "No user found with this email."},
                 status=status.HTTP_404_NOT_FOUND
             )
 

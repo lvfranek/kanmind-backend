@@ -3,28 +3,28 @@ from django.contrib.auth.models import User
 
 
 class Board(models.Model):
-    """Kanban Board - gehört einem Owner und hat mehrere Members"""
+    """Kanban Board - belongs to an Owner and has multiple Members"""
 
-    """Titel des Boards"""
+    """Title of the Board"""
     title = models.CharField(max_length=255)
 
-    """User der das Board erstellt hat - ist der Owner"""
+    """User who created the Board - is the Owner"""
     owner = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name="boards"
     )
 
-    """Liste aller Members des Boards - können mehrere sein"""
+    """List of all Members of the Board - can be several"""
     members = models.ManyToManyField(
         User,
         related_name="board_memberships"
     )
 
-    """Wann wurde das Board erstellt"""
+    """When was the Board created"""
     created_at = models.DateTimeField(auto_now_add=True)
 
-    """Wann wurde das Board zuletzt aktualisiert"""
+    """When was the Board last updated"""
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
@@ -37,7 +37,7 @@ class Board(models.Model):
 
 
 class Task(models.Model):
-    """Task gehört zu einem Board - hat Status, Priorität, Assignee und Reviewer"""
+    """Task belongs to a Board - has Status, Priority, Assignee and Reviewer"""
 
     STATUS_CHOICES = [
         ('to-do', 'To Do'),
@@ -52,34 +52,34 @@ class Task(models.Model):
         ('high', 'High'),
     ]
 
-    """Das Board zu dem die Task gehört"""
+    """The Board this Task belongs to"""
     board = models.ForeignKey(
         Board,
         on_delete=models.CASCADE,
         related_name="tasks"
     )
 
-    """Titel der Task"""
+    """Title of the Task"""
     title = models.CharField(max_length=255)
 
-    """Beschreibung der Task"""
+    """Description of the Task"""
     description = models.TextField(blank=True, null=True)
 
-    """Status der Task - to-do, in-progress, review oder done"""
+    """Status of the Task - to-do, in-progress, review or done"""
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
         default='to-do'
     )
 
-    """Priorität der Task - low, medium oder high"""
+    """Priority of the Task - low, medium or high"""
     priority = models.CharField(
         max_length=20,
         choices=PRIORITY_CHOICES,
         default='medium'
     )
 
-    """User dem die Task zugewiesen ist"""
+    """User the Task is assigned to"""
     assignee = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -88,7 +88,7 @@ class Task(models.Model):
         related_name="assigned_tasks"
     )
 
-    """User der die Task reviewed"""
+    """User who reviews the Task"""
     reviewer = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -97,20 +97,20 @@ class Task(models.Model):
         related_name="reviewed_tasks"
     )
 
-    """Fälligkeitsdatum der Task"""
+    """Due date of the Task"""
     due_date = models.DateField(blank=True, null=True)
 
-    """Wer hat die Task erstellt"""
+    """Who created the Task"""
     creator = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name="created_tasks"
     )
 
-    """Wann wurde die Task erstellt"""
+    """When was the Task created"""
     created_at = models.DateTimeField(auto_now_add=True)
 
-    """Wann wurde die Task zuletzt aktualisiert"""
+    """When was the Task last updated"""
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
@@ -123,30 +123,30 @@ class Task(models.Model):
 
 
 class Comment(models.Model):
-    """Kommentar zu einer Task - wird von einem User erstellt"""
+    """Comment on a Task - created by a User"""
 
-    """Die Task zu der der Kommentar gehört"""
+    """The Task this Comment belongs to"""
     task = models.ForeignKey(
         Task,
         on_delete=models.CASCADE,
         related_name="comments"
     )
 
-    """Der Inhalt des Kommentars"""
+    """The content of the Comment"""
     content = models.TextField()
 
-    """Der Author des Kommentars"""
+    """The Author of the Comment"""
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name="comments"
     )
 
-    """Wann wurde der Kommentar erstellt"""
+    """When was the Comment created"""
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Kommentar von {self.author} zu {self.task}"
+        return f"Comment by {self.author} on {self.task}"
 
     class Meta:
         verbose_name = "Comment"

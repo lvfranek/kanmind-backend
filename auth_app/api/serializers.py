@@ -5,7 +5,7 @@ from auth_app.models import UserProfile
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    """Serializer für UserProfile - konvertiert Modeldaten zu JSON"""
+    """Serializer for UserProfile - converts model data to JSON"""
 
     class Meta:
         model = UserProfile
@@ -13,7 +13,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class RegistrationSerializer(serializers.Serializer):
-    """Serializer für Registration - validiert eingehende Registrierungsdaten"""
+    """Serializer for Registration - validates incoming registration data"""
 
     fullname = serializers.CharField(max_length=255, required=True)
     email = serializers.EmailField(required=True)
@@ -21,29 +21,29 @@ class RegistrationSerializer(serializers.Serializer):
     repeated_password = serializers.CharField(write_only=True, min_length=6)
 
     def validate(self, attrs):
-        """Prüft ob beide Passwörter identisch sind"""
+        """Checks that both passwords match"""
         if attrs['password'] != attrs['repeated_password']:
             raise serializers.ValidationError(
-                {"password": "Passwörter stimmen nicht überein."}
+                {"password": "Passwords do not match."}
             )
         return attrs
 
     def validate_email(self, value):
-        """Prüft ob Email bereits existiert"""
+        """Checks that the email is not already registered"""
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError(
-                "Diese Email ist bereits registriert.")
+                "This email is already registered.")
         return value
 
     def create(self, validated_data):
-        """Erstellt neuen User, UserProfile und Token"""
+        """Creates a new User, UserProfile and Token"""
         user = self._create_user(validated_data)
         profile = self._create_profile(user, validated_data)
         token = self._create_token(user)
         return self._build_response(user, profile, token)
 
     def _create_user(self, validated_data):
-        """Erstellt den User mit Email als Username"""
+        """Creates the User with email as username"""
         return User.objects.create_user(
             username=validated_data['email'],
             email=validated_data['email'],
@@ -51,19 +51,19 @@ class RegistrationSerializer(serializers.Serializer):
         )
 
     def _create_profile(self, user, validated_data):
-        """Erstellt das UserProfile für den User"""
+        """Creates the UserProfile for the User"""
         return UserProfile.objects.create(
             user=user,
             fullname=validated_data['fullname']
         )
 
     def _create_token(self, user):
-        """Erstellt oder holt den Auth-Token des Users"""
+        """Creates or fetches the Auth token of the User"""
         token, created = Token.objects.get_or_create(user=user)
         return token
 
     def _build_response(self, user, profile, token):
-        """Baut das Response-Dict für die Registration"""
+        """Builds the response dict for the Registration"""
         return {
             'token': token.key,
             'fullname': profile.fullname,
@@ -73,13 +73,13 @@ class RegistrationSerializer(serializers.Serializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    """Serializer für Login - validiert Email und Passwort"""
+    """Serializer for Login - validates email and password"""
 
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
-        """Prüft ob User existiert und Passwort korrekt ist"""
+        """Checks that the User exists and the password is correct"""
         email = attrs.get('email')
         password = attrs.get('password')
 
@@ -87,12 +87,12 @@ class LoginSerializer(serializers.Serializer):
             user = User.objects.get(email=email)
         except User.DoesNotExist:
             raise serializers.ValidationError(
-                {"email": "Email nicht gefunden."}
+                {"email": "Email not found."}
             )
 
         if not user.check_password(password):
             raise serializers.ValidationError(
-                {"password": "Passwort ist falsch."}
+                {"password": "Password is incorrect."}
             )
 
         attrs['user'] = user
@@ -100,7 +100,7 @@ class LoginSerializer(serializers.Serializer):
 
 
 class LoginResponseSerializer(serializers.Serializer):
-    """Serializer für Login Response - formatiert die Antwort"""
+    """Serializer for Login Response - formats the response"""
 
     token = serializers.CharField()
     fullname = serializers.CharField()

@@ -7,15 +7,15 @@ from auth_app.models import UserProfile
 
 @pytest.mark.django_db
 class TestRegistration:
-    """Tests für User Registrierung"""
+    """Tests for User Registration"""
 
     def setup_method(self):
-        """Wird vor jedem Test ausgeführt"""
+        """Runs before every test"""
         self.client = APIClient()
         self.url = '/api/registration/'
 
     def test_registration_success(self):
-        """Test: User kann sich erfolgreich registrieren"""
+        """Test: User can register successfully"""
         data = {
             'fullname': 'Max Mustermann',
             'email': 'max@example.com',
@@ -30,7 +30,7 @@ class TestRegistration:
         assert User.objects.filter(email='max@example.com').exists()
 
     def test_registration_passwords_not_matching(self):
-        """Test: Registrierung schlägt fehl wenn Passwörter nicht gleich"""
+        """Test: Registration fails when passwords do not match"""
         data = {
             'fullname': 'Max Mustermann',
             'email': 'max@example.com',
@@ -42,7 +42,7 @@ class TestRegistration:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_registration_duplicate_email(self):
-        """Test: Registrierung schlägt fehl bei doppelter Email"""
+        """Test: Registration fails with duplicate email"""
         User.objects.create_user(
             username='existing@example.com',
             email='existing@example.com',
@@ -60,7 +60,7 @@ class TestRegistration:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_registration_missing_fields(self):
-        """Test: Registrierung schlägt fehl wenn Felder fehlen"""
+        """Test: Registration fails when fields are missing"""
         data = {
             'fullname': 'Max Mustermann',
             'email': 'max@example.com'
@@ -72,14 +72,14 @@ class TestRegistration:
 
 @pytest.mark.django_db
 class TestLogin:
-    """Tests für User Login"""
+    """Tests for User Login"""
 
     def setup_method(self):
-        """Wird vor jedem Test ausgeführt"""
+        """Runs before every test"""
         self.client = APIClient()
         self.url = '/api/login/'
 
-        """Erstelle Test User"""
+        """Create test user"""
         self.user = User.objects.create_user(
             username='test@example.com',
             email='test@example.com',
@@ -91,7 +91,7 @@ class TestLogin:
         )
 
     def test_login_success(self):
-        """Test: User kann sich erfolgreich einloggen"""
+        """Test: User can log in successfully"""
         data = {
             'email': 'test@example.com',
             'password': 'testpassword123'
@@ -103,7 +103,7 @@ class TestLogin:
         assert response.data['user_id'] == self.user.id
 
     def test_login_wrong_password(self):
-        """Test: Login schlägt fehl mit falschem Passwort"""
+        """Test: Login fails with wrong password"""
         data = {
             'email': 'test@example.com',
             'password': 'falschespasswort'
@@ -113,7 +113,7 @@ class TestLogin:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_login_nonexistent_email(self):
-        """Test: Login schlägt fehl mit nicht existierender Email"""
+        """Test: Login fails with a nonexistent email"""
         data = {
             'email': 'nonexistent@example.com',
             'password': 'testpassword123'
