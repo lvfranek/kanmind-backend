@@ -55,17 +55,24 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-4. Apply database migrations
+4. Create your local environment file and set a secret key
+```bash
+cp .env.example .env
+python3 -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
+Paste the generated value into `.env` as `SECRET_KEY=...`. This file is git-ignored and must never be committed.
+
+5. Apply database migrations
 ```bash
 python3 manage.py migrate
 ```
 
-5. Create a superuser (to access the Django admin panel)
+6. Create a superuser (to access the Django admin panel)
 ```bash
 python3 manage.py createsuperuser
 ```
 
-6. Start the development server
+7. Start the development server
 ```bash
 python3 manage.py runserver
 ```
@@ -119,6 +126,7 @@ The token is returned upon successful registration or login.
 ## Notes
 
 - The database file (`db.sqlite3`) is not included in this repository, as per project requirements. It will be created automatically after running migrations.
+- The Django `SECRET_KEY` is not included in this repository. It is loaded from a local `.env` file (see step 4 above) and the server will refuse to start without one.
 - This backend is designed to work with the KanMind frontend, tested via Postman during development.
 
 ## Frontend
